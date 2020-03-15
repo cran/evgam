@@ -214,7 +214,7 @@ sigma <- sqrt(rowSums(X.plot * (X.plot %*% mod$Vp[nb == i, nb == i])))
 if (nx == 1) mult <- 2 else mult <- 1
 for (j in c(-1, 1)) z0 <- cbind(z0, z0 + mult * j * sigma)
 if (nx == 1) {
-matplot(plot.list[[1]], z0, lty=c(1, 2, 2), col=1, type="l", xlab=smth$term[1])
+matplot(plot.list[[1]], z0, lty=c(1, 2, 2), col=1, type="l", xlab=smth$term[1], ylab=smth$label)
 rug(data[,1])
 }
 if (nx == 2) {

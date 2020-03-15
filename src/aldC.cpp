@@ -10,7 +10,7 @@
 // //' @param yvec a vector
 // //' @param tau a scalar, the quantile sought
 // //' @param C a scalar, for the Ho et al. (2000) correction
-// //' @param dupid a scalar or vector, identifying duplicates in X1 and X2; -1 corresponds to no duplicates
+// //' @param dupid a scalar or vector, identifying duplicates in X1 and X2
 // //' @return aldd0 a scalar, the negative log-liklihood
 // //' @return aldd12 a matrix, first then second derivatives w.r.t. ALD parameters
 // //' @return aldd34 a matrix, third then fourth derivatives w.r.t. ALD parameters

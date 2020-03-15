@@ -6,7 +6,8 @@
 \alias{COprcp_meta}
 \alias{COelev}
 \title{Colorado daily precipitation accumulations}
-\format{A data frame with 2383452 rows and 8 variables
+\format{
+A data frame with 2383452 rows and 8 variables
 
 The variables are as follows:
 
@@ -18,7 +19,8 @@ The variables are as follows:
   \item{lat}{latitude of station}
   \item{elev}{elevation of station in metres}
   \item{id}{GHCDN identifier}
-}}
+}
+}
 \usage{
 data(COprcp) # loads all three objects
 }
@@ -38,7 +40,7 @@ library(evgam)
 data(COprcp)
 
 brks <- pretty(COelev$z, 50)
-image(COelev, breaks=brks, col=hcl.colors(length(brks) - 1, "YlOrRd", rev=TRUE))
+image(COelev, breaks=brks, col=rev(heat.colors(length(brks[-1]))))
 colplot(COprcp_meta$lon, COprcp_meta$lat, COprcp_meta$elev, breaks=brks, add=TRUE)
 
 }

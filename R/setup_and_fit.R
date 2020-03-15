@@ -276,7 +276,7 @@ if (compact) {
 lik.data$dupid <- dup.id - 1
 lik.data$duplicate <- 1
 } else {
-lik.data$dupid <- -1
+lik.data$dupid <- 0
 lik.data$duplicate <- 0
 }
 if (length(lik.data$X) == 1 & length(nms) > 1) {
@@ -668,7 +668,7 @@ gams$exi.name <- likdata$exiname
 }
 for (i in seq_along(likdata$X)) {
 gams[[i]]$X <- likdata$X[[i]]
-if (likdata$dupid[1] != -1) gams[[i]]$X <- gams[[i]]$X[likdata$dupid + 1,]
+if (likdata$duplicate == 1) gams[[i]]$X <- gams[[i]]$X[likdata$dupid + 1,]
 gams[[i]]$fitted <- as.vector(likdata$X[[i]] %*% gams[[i]]$coefficients)
 }
 gams$likdata <- likdata

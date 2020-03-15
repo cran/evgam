@@ -2,8 +2,6 @@
 #include <RcppArmadillo.h>
 #include <Rcpp.h>
 
-const double xieps = 0.0;
-
 // [[Rcpp::export]]
 double pp1d0(const Rcpp::List& pars, const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, arma::vec yvec, arma::vec wvec)
 {

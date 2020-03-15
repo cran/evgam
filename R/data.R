@@ -40,7 +40,7 @@
 #' data(COprcp)
 #'
 #' brks <- pretty(COelev$z, 50)
-#' image(COelev, breaks=brks, col=hcl.colors(length(brks) - 1, "YlOrRd", rev=TRUE))
+#' image(COelev, breaks=brks, col=rev(heat.colors(length(brks[-1]))))
 #' colplot(COprcp_meta$lon, COprcp_meta$lat, COprcp_meta$elev, breaks=brks, add=TRUE)
 #'
 NULL

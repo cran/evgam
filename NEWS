@@ -1,0 +1,15 @@
+evgam v0.1.1 (Release date: 2020-03-11)
+==============
+
+Changes:
+
+* Compilation flag with clang++ in gradHess.cpp addressed.
+
+* plot.evgam now has informative y-axis labels for one-dimensional smooths.
+
+* simulate.evgam correctly labels variables for family = "response".
+
+evgam v0.1.0 (Release date: 2020-03-08)
+==============
+
+Initial release.

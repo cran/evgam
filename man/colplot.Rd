@@ -9,7 +9,6 @@ colplot(
   y,
   z,
   n = 20,
-  pal = "YlOrRd",
   rev = TRUE,
   cex = 1,
   pch = 21,
@@ -26,9 +25,7 @@ colplot(
 
 \item{n}{an integer giving the number of colour levels, supplied to \link[base]{pretty}}
 
-\item{pal}{a character string giving the palette, supplied to \link[grDevices]{hcl.colors}}
-
-\item{rev}{a logical giving whether the palette is to be reversed, supplied to \link[grDevices]{hcl.colors}}
+\item{rev}{logical: should the palette be reversed? Defaults to \code{TRUE}}
 
 \item{cex}{a scalar for character expansion, supplied to \link[graphics]{plot}}
 

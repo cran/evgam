@@ -24,7 +24,6 @@ X1.each_col() %= gh.col(0);
 
 if (sand == 0) {
     g = sum(X1, 0);
-    g = g;
 } else {
     g = X1;
 }
@@ -66,7 +65,6 @@ X2.each_col() %= gh.col(1);
 
 if (sand == 0) {
     g = join_rows(sum(X1, 0), sum(X2, 0));
-    g = g;
 } else {
     g = join_rows(X1, X2);
 }
@@ -116,7 +114,6 @@ X3.each_col() %= gh.col(2);
 
 if (sand == 0) {
     g = join_rows(join_rows(sum(X1, 0), sum(X2, 0)), sum(X3, 0));
-    g = g;
 } else {
     g = join_rows(join_rows(X1, X2), X3);
 }

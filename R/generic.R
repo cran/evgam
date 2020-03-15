@@ -495,6 +495,7 @@ if (type %in% c("response", "quantile")) {
 unlink <- which(substr(names(X), 1, 3) == "log")
 nms <- gsub("log", "", nms)
 for (i in unlink) X[[i]] <- exp(X[[i]])
+names(X) <- nms
 }
 }
 if (type == "quantile") {
@@ -774,8 +775,7 @@ x
 #' @param y a vector of y coordinates
 #' @param z a variable for defining colours
 #' @param n an integer giving the number of colour levels, supplied to \link[base]{pretty}
-#' @param pal a character string giving the palette, supplied to \link[grDevices]{hcl.colors}
-#' @param rev a logical giving whether the palette is to be reversed, supplied to \link[grDevices]{hcl.colors}
+#' @param rev logical: should the palette be reversed? Defaults to \code{TRUE}
 #' @param cex a scalar for character expansion, supplied to \link[graphics]{plot}
 #' @param pch an integer giving the plotting character, supplied to \link[graphics]{plot}
 #' @param add logical: add to an existing plot? Defaults to \code{FALSE}
@@ -791,9 +791,10 @@ x
 #'
 #' @export
 #' 
-colplot <- function(x, y, z, n=20, pal="YlOrRd", rev=TRUE, cex=1, pch=21, add=FALSE, breaks=NULL) {
+colplot <- function(x, y, z, n=20, rev=TRUE, cex=1, pch=21, add=FALSE, breaks=NULL) {
 brks <- pretty(z, n)
-pal <- hcl.colors(length(brks[-1]), pal, rev=rev)
+pal <- heat.colors(length(brks[-1]))
+if (rev) pal <- rev(pal)
 col <- pal[as.integer(cut(z, brks))]
 if (!add) {
 if (pch %in% 21:25) {

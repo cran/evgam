@@ -4,14 +4,16 @@
 \name{FCtmax}
 \alias{FCtmax}
 \title{Fort Collins, Colorado, US daily max. temperatures}
-\format{A data frame with 18156 rows and 2 variables
+\format{
+A data frame with 18156 rows and 2 variables
 
 The variables are as follows:
 
 \describe{
   \item{date}{date of observation}
   \item{tmax}{daily maximum temperature in degrees Celcius}
-}}
+}
+}
 \usage{
 data(FCtmax)
 }
