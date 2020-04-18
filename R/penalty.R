@@ -71,17 +71,21 @@ out
 .gH <- function(x, likdata, sandwich=FALSE, deriv=2) {
 nX <- length(likdata$X)
 if (nX == 1) {
-    out <- .gH1(x, likdata$X[[1]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
+  out <- .gH1(x, likdata$X[[1]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
 } else {
-    if (nX == 2) {
-        out <- .gH2(x, likdata$X[[1]], likdata$X[[2]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
+  if (nX == 2) {
+    out <- .gH2(x, likdata$X[[1]], likdata$X[[2]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
+  } else {
+    if (nX == 3) {
+      out <- .gH3(x, likdata$X[[1]], likdata$X[[2]], likdata$X[[3]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
     } else {
-        if (nX == 3) {
-            out <- .gH3(x, likdata$X[[1]], likdata$X[[2]], likdata$X[[3]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
-        } else {
-            stop("Number of model parameters not in {1, 2, 3}")
-        }
+      if (nX == 4) { # added with evgam_0.1.2 (05/04/2020)
+        out <- .gH4(x, likdata$X[[1]], likdata$X[[2]], likdata$X[[3]], likdata$X[[4]], likdata$dupid, likdata$duplicate, as.integer(sandwich), deriv)
+      } else {
+        stop("Number of model parameters not in {1, 2, 3, 4}")
+      }
     }
+  }
 }
 out
 }

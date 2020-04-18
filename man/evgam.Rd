@@ -45,7 +45,7 @@ evgam(
 
 \item{removeData}{logical: should \code{data} be removed from \code{evgam} object? Defaults to \code{FALSE}}
 
-\item{trace}{an integer specifying the amount of information supplied about fitting; defaults to \code{1}}
+\item{trace}{an integer specifying the amount of information supplied about fitting, with \code{-1} suppressing all output; defaults to \code{0}}
 
 \item{knots}{passed to \link[mgcv]{s}; defaults to \code{NULL}}
 
@@ -108,7 +108,11 @@ see Chandler & Bate (2007) for their definitions.
 }
 \examples{
 
-library(evgam)
+data(fremantle)
+fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+m_gev <- evgam(fmla_gev, fremantle, family = "gev")
+
+\donttest{
 
 data(COprcp)
 
@@ -121,24 +125,22 @@ COprcp_gpd <- subset(COprcp, excess > 0)
 fmla_gpd <- list(excess ~ s(lon, lat, k=12) + s(elev, k=5, bs="cr"), ~ 1)
 m_gpd <- evgam(fmla_gpd, data=COprcp_gpd, family="gpd")
 
-\donttest{
-
 ## fit generalised extreme value distribution to annual maxima
 
 COprcp$year <- format(COprcp$date, "\%Y")
 COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
 COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
-summary(m_gev)
-plot(m_gev)
-predict(m_gev, newdata=COprcp_meta, type="response")
+fmla_gev2 <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
+m_gev2 <- evgam(fmla_gev2, data=COprcp_gev, family="gev")
+summary(m_gev2)
+plot(m_gev2)
+predict(m_gev2, newdata=COprcp_meta, type="response")
 
 ## fit point process model using r-largest order statistics
 
 # we have `ny=30' years' data and use top 45 order statistics
 pp_args <- list(id="id", ny=30, r=45)
-m_pp <- evgam(fmla_gev, COprcp, family="pp", pp.args=pp_args)
+m_pp <- evgam(fmla_gev2, COprcp, family="pp", pp.args=pp_args)
 
 ## estimate 0.98 quantile using asymmetric Laplace distribution
 

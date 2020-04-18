@@ -76,11 +76,11 @@ rep(seq_along(starts), ends - starts + 1)
 #'
 #' n <- 1e2
 #' x <- runif(n)
-#' extremal0(x > .9)
+#' extremal(x > .9)
 #' 
 #' y <- sort(sample(n, n - 5))
-#' x <- x[y]
-#' extremal(x > .9, y)
+#' x2 <- x[y]
+#' extremal(x2 > .9, y)
 #'
 #' @details
 #' 
@@ -90,7 +90,6 @@ rep(seq_along(starts), ends - starts + 1)
 #' If \code{x} is supplied as a list, each list element is assumed to comprise identifiers of consecutive exceedances.
 #' If \code{y} is supplied, \code{x} must be a logical vector, and \code{y} gives positions of \code{x} in
 #' its original with-missing-values vector: so \code{y} identifies consecutive \code{x}.
-#' For \code{extremal0} \code{x} must be a logical vector, as is assumed to identify consecutive threshold exceedances.
 #'
 #' @references 
 #' 
@@ -101,28 +100,17 @@ rep(seq_along(starts), ends - starts + 1)
 #' @export
 #'
 extremal <- function(x, y=NULL) {
-if (!is.null(y)) x <- split(x, .cons2split(y))
-if (class(x) != "list") x <- list(x)
+if (!is.null(y)) 
+  x <- split(x, .cons2split(y))
+if (!inherits(x, "list")) 
+  x <- list(x)
 x <- x[sapply(x, sum) > 1]
-theta <- sapply(x, extremal0)
-wts <- sapply(x, length)
-wts <- wts / sum(wts)
-sum(wts * theta)
-}
-
-#' @rdname extremal
-#'
-#' @name extremal0
-#'
-#' @export
-#'
-extremal0 <- function(x) {
-N.u <- sum(x)
-T.u <- diff(seq_along(x)[x])
-if (!any(T.u > 2)) {
-  hold <- colSums(cbind(T.u, T.u^2))
+Tu <- unlist(lapply(x, function(z) diff(seq_along(z)[z])))
+Nu <- sum(unlist(x))
+if (!any(Tu > 2)) {
+  hold <- colSums(cbind(Tu, Tu^2))
 } else {
-  hold <- colSums(cbind(T.u - 1, (T.u - 1) * (T.u - 2)))
+  hold <- colSums(cbind(Tu - 1, (Tu - 1) * (Tu - 2)))
 }
-pmin(2 * (hold[1])^2/((N.u - 1) * hold[2]), 1)
+pmin(2 * (hold[1])^2/((Nu - 1) * hold[2]), 1)
 }

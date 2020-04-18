@@ -16,6 +16,7 @@ A data frame
 Bind a list a data frames
 }
 \examples{
+
 z <- list(data.frame(x=1, y=1), data.frame(x=2, y=2))
 dfbind(z)
 

@@ -9,11 +9,21 @@ colplot(
   y,
   z,
   n = 20,
+  z.lim = NULL,
+  breaks = NULL,
+  palette = heat.colors,
   rev = TRUE,
-  cex = 1,
   pch = 21,
   add = FALSE,
-  breaks = NULL
+  ...,
+  legend = FALSE,
+  n.legend = 6,
+  legend.pretty = TRUE,
+  legend.plot = TRUE,
+  legend.x,
+  legend.y = NULL,
+  legend.horiz = FALSE,
+  legend.bg = par("bg")
 )
 }
 \arguments{
@@ -25,15 +35,35 @@ colplot(
 
 \item{n}{an integer giving the number of colour levels, supplied to \link[base]{pretty}}
 
-\item{rev}{logical: should the palette be reversed? Defaults to \code{TRUE}}
+\item{z.lim}{xxx}
 
-\item{cex}{a scalar for character expansion, supplied to \link[graphics]{plot}}
+\item{breaks}{a vector or breaks for defining color intervals; defaults to \code{NULL}, so \link[base]{pretty} and \code{n} are used on \code{z}}
+
+\item{palette}{a function for the color palette, or colors between \code{breaks}; defaults to \link[grDevices]{heat.colors}}
+
+\item{rev}{logical: should the palette be reversed? Defaults to \code{TRUE}}
 
 \item{pch}{an integer giving the plotting character, supplied to \link[graphics]{plot}}
 
-\item{add}{logical: add to an existing plot? Defaults to \code{FALSE}}
+\item{add}{should this be added to an existing plot? Defaults to \code{FALSE}}
 
-\item{breaks}{a vector or breaks for defining color intervals; defaults to \code{NULL}, so \link[base]{pretty} and \code{n} are used on \code{z}}
+\item{...}{other arguments passed to \link[graphics]{plot}}
+
+\item{legend}{should a legend be added? Defaults to code{FALSE}}
+
+\item{n.legend}{an integer giving the approximate number of legend entries; defaults to 6}
+
+\item{legend.pretty}{logical: should the legend values produced by \[base]{pretty}? Othewrwise they are exact. Defaults to \code{TRUE}}
+
+\item{legend.plot}{passed to \link[graphics]{legend}'s \code{plot} argument}
+
+\item{legend.x}{passed to \link[graphics]{legend}'s \code{x} argument}
+
+\item{legend.y}{passed to \link[graphics]{legend}'s \code{y} argument}
+
+\item{legend.horiz}{passed to \link[graphics]{legend}'s \code{horiz} argument}
+
+\item{legend.bg}{passed to \link[graphics]{legend}'s \code{bg} argument}
 }
 \value{
 A plot
@@ -46,5 +76,8 @@ Scatter plot, with variable-based point colours
 x <- runif(50)
 y <- runif(50)
 colplot(x, y, x * y)
+colplot(x, y, x * y, legend=TRUE, legend.x="bottomleft")
+colplot(x, y, x * y, legend=TRUE, legend.pretty=FALSE, n.legend=10, 
+  legend.x="bottomleft", legend.horiz=TRUE)
 
 }

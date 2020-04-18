@@ -2,12 +2,9 @@
 % Please edit documentation in R/exi.R
 \name{extremal}
 \alias{extremal}
-\alias{extremal0}
 \title{Estimate extremal index using `intervals' method}
 \usage{
 extremal(x, y = NULL)
-
-extremal0(x)
 }
 \arguments{
 \item{x}{a logical vector or list of logical vectors}
@@ -27,17 +24,16 @@ If \code{x} is supplied and \code{y} is not, \code{x} is assumed to identify con
 If \code{x} is supplied as a list, each list element is assumed to comprise identifiers of consecutive exceedances.
 If \code{y} is supplied, \code{x} must be a logical vector, and \code{y} gives positions of \code{x} in
 its original with-missing-values vector: so \code{y} identifies consecutive \code{x}.
-For \code{extremal0} \code{x} must be a logical vector, as is assumed to identify consecutive threshold exceedances.
 }
 \examples{
 
 n <- 1e2
 x <- runif(n)
-extremal0(x > .9)
+extremal(x > .9)
 
 y <- sort(sample(n, n - 5))
-x <- x[y]
-extremal(x > .9, y)
+x2 <- x[y]
+extremal(x2 > .9, y)
 
 }
 \references{

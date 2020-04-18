@@ -88,6 +88,20 @@ d2 <- .5 * (d2 + t(d2))
 list(d1=d1, d2=d2)
 }
 
+.reml2.fd <- function(pars, likfns, likdata, Sdata, H=NULL, beta=NULL, kept=NULL) {
+beta <- attr(pars, "beta")
+eps <- 1e-4
+f0 <- .reml1(pars, likfns, likdata, Sdata, beta=beta, H=H)
+f1 <- matrix(0, length(pars), length(pars))
+for (i in seq_along(pars)) {
+  parsi <- pars
+  parsi[i] <- parsi[i] + eps
+  f1[i,] <- .reml1(parsi, likfns, likdata, Sdata, beta=beta, H=H)
+}
+f1 <- (f1 - f0) / eps
+.5 * (f1 + t(f1))
+}
+
 .reml12.1 <- function(pars, likfns, likdata, Sdata, H=NULL, beta=NULL) {
 if (is.null(beta)) {
     beta <- attr(pars, "beta")

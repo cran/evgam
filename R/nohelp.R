@@ -56,74 +56,48 @@ out
 
 ## smoothing matrix manipulation functions
 
-.mergeSlist <- function(Sls) {
-out <- list()
-start <- 0
-for (i in 1:length(Sls)) {
-ni <- length(Sls[[i]])
-for (j in seq_len(ni)) out[[start + j]] <- Sls[[i]][[j]]
-start <- start + ni
-}
-out
-}
-
 .makeS <- function(lst, sp) {
-nb <- max(sapply(lst, function(x) x$last.para))
-S <- diag(numeric(nb))
-it <- 1
-for (i in seq_along(lst)) {
-for (j in seq_along(lst[[i]]$S)) {
-ind <- lst[[i]]$first.para:lst[[i]]$last.para
-mat <- S[ind, ind]
-mat <- mat + sp[it] * lst[[i]]$S[[j]]
-S[ind, ind] <- mat
-it <- it + 1
-}
-}
-S
+Reduce("+", Map("*", attr(lst, "Sl"), sp))
 }
 
 .joinSmooth <- function(lst) {
 nms <- c("S", "first.para", "last.para", "rank", "null.space.dim")
+nbi <- sapply(lst, function(x) x$nb)
+starts <- cumsum(c(0, nbi))
 if (length(lst) == 1) {
-lst <- lst[[1]]
+  lst <- lst[[1]]$smooth
 } else {
-starts <- sapply(lst, function(x) max(sapply(x, function(x) x$last.para)))
-starts <- c(0, cumsum(starts[-length(starts)]))
-for (i in seq_along(lst)) for (j in seq_along(lst[[i]])) {
-lst[[i]][[j]]$first.para <- lst[[i]][[j]]$first.para + starts[i]
-lst[[i]][[j]]$last.para <- lst[[i]][[j]]$last.para + starts[i]
-}
-lst0 <- lst[[1]]
-nlst <- length(lst0)
-if (length(lst) > 1) {
-for (i in 2:length(lst)) {
-for (j in seq_along(lst[[i]])) lst0[[nlst + j]] <- lst[[i]][[j]]
-nlst <- nlst + length(lst[[i]])
-}
-lst <- lst0
-}
+  lst <- lapply(lst, function(x) x$smooth)
+  smooths <- sapply(lst, length) > 0
+  for (i in which(smooths)) {
+    for (j in seq_along(lst[[i]])) {
+      lst[[i]][[j]]$first.para <- lst[[i]][[j]]$first.para + starts[i]
+      lst[[i]][[j]]$last.para <- lst[[i]][[j]]$last.para + starts[i]
+    }
+  }
+lst <- unlist(lst, recursive=FALSE)
 }
 out <- lapply(lst, function(x) subset(x, names(x) %in% nms))
 lst2 <- list()
-nb <- max(sapply(lst, function(x) x$last.para))
+nb <- tail(starts, 1)
 for (i in seq_along(lst)) {
-temp <- list()
-for (j in seq_along(lst[[i]]$S)) {
-temp2 <- matrix(0, nb, nb)
-fp <- lst[[i]]$first.para
-if (!is.null(fp)) {
-lp <- lst[[i]]$last.para
-ind <- fp:lp
-temp2[ind, ind] <- lst[[i]]$S[[j]]
+  temp <- list()
+  ind <- lst[[i]]$first.para:lst[[i]]$last.para
+  for (j in seq_along(lst[[i]]$S)) {
+    temp2 <- matrix(0, nb, nb)
+      temp2[ind, ind] <- lst[[i]]$S[[j]]
+#     }
+    temp[[j]] <- temp2
+  }
+  lst2[[i]] <- temp
 }
-temp[[j]] <- temp2
+lst2 <- unlist(lst2, recursive=FALSE)
+for (i in seq_along(out)) {
+  if (length(out[[i]]$null.space.dim) == 0) 
+    out[[i]]$null.space.dim <- 0
 }
-lst2[[i]] <- temp
-}
-lst2 <- .mergeSlist(lst2)
-for (i in seq_along(out)) if (length(out[[i]]$null.space.dim) == 0) out[[i]]$null.space.dim <- 0
 attr(out, "Sl") <- lst2
+attr(out, "nb") <- nb
 out
 }
 
@@ -545,10 +519,11 @@ if (is.null(kept)) kept <- !logical(length(pars))
 it <- 1
 okay <- TRUE
 f0 <- fn(pars, ...)
+step1 <- NULL
 
 while (okay) {
 if (it > 1) g0 <- g
-if (exists("step1")) {
+if (!is.null(step1)) {
 step0 <- step1
 g <- attr(step0, "gradient")
 } else {
@@ -652,11 +627,12 @@ stepmax <- control$stepmax
 it <- 1
 okay <- TRUE
 f0 <- fn(pars, ...)
+g1 <- NULL
 I <- iH <- H <- diag(length(pars))
 
 while (okay) {
 if (it > 1) g0 <- g
-if (exists("g1")) {
+if (!is.null(g1)) {
 g <- g1
 } else {
 attr(pars, "beta") <- attr(f0, "beta")

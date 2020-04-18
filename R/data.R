@@ -77,3 +77,37 @@ NULL
 #' library(evgam)
 #' data(FCtmax)
 NULL
+
+#' Annual Maximum Sea Levels at Fremantle, Western Australia
+#'
+#' The 'fremantle' data frame has 86 rows and 3 columns.  The second
+#'     column gives 86 annual maximimum sea levels recorded at Fremantle,
+#'     Western Australia, within the period 1897 to 1989.  The first
+#'     column gives the corresponding years.  The third column gives
+#'     annual mean values of the Southern Oscillation Index (SOI), which
+#'     is a proxy for meteorological volitility.
+#'
+#' @format A data frame with 86 rows and 3 variables
+#'
+#' The variables are as follows:
+#'
+#' \describe{
+#'   \item{Year}{a numeric vector of years}
+#'   \item{SeaLevel}{a numeric vector of annual sea level maxima}
+#'   \item{SOI}{A numeric vector of annual mean values of the Southern Oscillation Index}
+#' }
+#'
+#' @docType data
+#' @keywords datasets
+#' @name fremantle
+#' @usage data(fremantle)
+#' 
+#' @source Coles, S. G. (2001) _An Introduction to Statistical Modelling of
+#'   Extreme Values. London: Springer.
+#' @source Eric Gilleland's ismev R package.
+#'
+#' @examples
+#' 
+#' library(evgam)
+#' data(fremantle)
+NULL

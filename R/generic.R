@@ -14,7 +14,7 @@
 #' @param outer a character string specifying the outer optimiser is full \code{"Newton"}, \code{"BFGS"} or uses finite differences, \code{"FD"}; defaults to \code{"BFGS"}
 #' @param control a list of lists of control parameters to pass to inner and outer optimisers; defaults to \code{evgam.control()}
 #' @param removeData logical: should \code{data} be removed from \code{evgam} object? Defaults to \code{FALSE}
-#' @param trace an integer specifying the amount of information supplied about fitting; defaults to \code{1}
+#' @param trace an integer specifying the amount of information supplied about fitting, with \code{-1} suppressing all output; defaults to \code{0}
 #' @param knots passed to \link[mgcv]{s}; defaults to \code{NULL}
 #' @param maxdata an integer specifying the maximum number of \code{data} rows. \code{data} is sampled if its number of rows exceeds \code{maxdata}; defaults to \code{1e20}
 #' @param maxspline an integer specifying the maximum number of \code{data} rows used for spline construction; defaults to \code{1e20}
@@ -80,7 +80,11 @@
 #' 
 #' @examples
 #'
-#' library(evgam)
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
+#'
+#' \donttest{
 #' 
 #' data(COprcp)
 #'
@@ -93,24 +97,22 @@
 #' fmla_gpd <- list(excess ~ s(lon, lat, k=12) + s(elev, k=5, bs="cr"), ~ 1)
 #' m_gpd <- evgam(fmla_gpd, data=COprcp_gpd, family="gpd")
 #'
-#' \donttest{
-#'
 #' ## fit generalised extreme value distribution to annual maxima
 #'
 #' COprcp$year <- format(COprcp$date, "%Y")
 #' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
 #' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
-#' summary(m_gev)
-#' plot(m_gev)
-#' predict(m_gev, newdata=COprcp_meta, type="response")
+#' fmla_gev2 <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
+#' m_gev2 <- evgam(fmla_gev2, data=COprcp_gev, family="gev")
+#' summary(m_gev2)
+#' plot(m_gev2)
+#' predict(m_gev2, newdata=COprcp_meta, type="response")
 #' 
 #' ## fit point process model using r-largest order statistics
 #'
 #' # we have `ny=30' years' data and use top 45 order statistics
 #' pp_args <- list(id="id", ny=30, r=45)
-#' m_pp <- evgam(fmla_gev, COprcp, family="pp", pp.args=pp_args)
+#' m_pp <- evgam(fmla_gev2, COprcp, family="pp", pp.args=pp_args)
 #'
 #' ## estimate 0.98 quantile using asymmetric Laplace distribution
 #'
@@ -131,10 +133,10 @@ knots=NULL, maxdata=1e20, maxspline=1e20, compact=FALSE,
 ald.args=list(), exi.args=list(), pp.args=list(), sandwich.args=list()) {
 
 ## setup family
-family.info <- .setup.family(family)
+family.info <- .setup.family(family, pp.args)
 
 ## setup formulae
-formula <- .setup.formulae(formula, family.info$npar, family.info$npar2, data)
+formula <- .setup.formulae(formula, family.info$npar, family.info$npar2, data, trace)
 response.name <- attr(formula, "response.name")
 
 ## setup mgcv objects and data
@@ -155,7 +157,7 @@ smooths <- length(temp.data$gotsmooth) > 0
 if (smooths) {
 
 ## initialise outer iteration
-S.data <- .joinSmooth(lapply(temp.data$gams, function(x) x$smooth))
+S.data <- .joinSmooth(temp.data$gams)
 nsp <- length(attr(S.data, "Sl"))
 if (is.null(rho0)) {
     diagSl <- sapply(attr(S.data, "Sl"), diag)
@@ -180,7 +182,7 @@ fit.reml <- .outer.nosmooth(beta, family.info$lik.fns, lik.data, control, trace)
 }
 
 ## covariance matrices
-VpVc <- .VpVc(fit.reml, family.info$lik.fns, lik.data, S.data, correctV=correctV, sandwich=temp.data$sandwich, smooths=smooths)
+VpVc <- .VpVc(fit.reml, family.info$lik.fns, lik.data, S.data, correctV=correctV, sandwich=temp.data$sandwich, smooths=smooths, trace=trace)
 
 ## effective degrees of freedom
 edf <- .edf(fit.reml$beta, family.info$lik.fns, lik.data, VpVc, temp.data$sandwich)
@@ -206,227 +208,24 @@ message("`fevgam' will soon be deprecated: please migrate to `evgam'.")
 evgam(...)
 }
 
-#' Predictions from a fitted \code{evgam} object
+#' Extract Model Fitted Values
 #'
 #' @param object a fitted \code{evgam} object
-#' @param newdata a data frame
-#' @param type a character string giving the type of prediction sought; see Details. Defaults to \code{"link"}
-#' @param probs a scalar or vector of probabilities for quantiles to be estimated if \code{type == "quantile"}; defaults to 0.5
-#' @param se.fit a logical: should estimated standard errors be returned? Defaults to FALSE
-#' @param marginal a logical: should uncertainty estimates integrate out smoothing parameter uncertainty? Defaults to TRUE
-#' @param ... unused
-#'
-#' @details
-#'
-#' There are five options for \code{type}: 1) \code{"link"} distribution parameters 
-#' transformed to their model fitting scale; 2) \code{"response"} as 1), but on their 
-#' original scale; 3) "lpmatrix" a list of design matrices; 4) "quantile"
-#' estimates of distribution quantile(s); and 5) "qqplot" a quantile-quantile
-#' plot.
-#'
-#' @return A data frame or list of predictions, or a plot if \code{type == "qqplot"}
+#' @param ... not used
 #'
 #' @examples
 #'
-#' \donttest{
-#'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
-#' predict(m_gev, COprcp_meta)
-#' predict(m_gev, COprcp_meta, type="response")
-#' predict(m_gev, COprcp_meta, probs=.99)
-#' COprcp_qq1 <- subset(COprcp_gev, name == "BOULDER")
-#' predict(m_gev, COprcp_qq1, type="qqplot")
-#' COprcp_qq2 <- subset(COprcp_gev, name %in% c("BOULDER", "FT COLLINS"))
-#' predict(m_gev, COprcp_qq2, type="qqplot")
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 #' fitted(m_gev)
 #'
-#' }
-#'
-#' @name predict.evgam
-#' 
-#' @export
-#'
-predict.evgam <- function(object, newdata=NULL, type="link", probs=NULL, se.fit=FALSE, marginal=TRUE, ...) {
-if (!is.null(probs)) type <- "quantile"
-if (type == "quantile" & is.null(probs)) stop("non-NULL `probs' required if `type' is `response'")
-family <- object$family
-ndat <- nrow(object$data)
-if (marginal) {
-  V.type <- "Vc" 
-} else {
-  V.type <- "Vp"
-}
-if (type != "qqplot") {
-if (type == "quantile" & !(family %in% c("gev", "gpd", "weibull", "pp")))
-  stop(paste("Use of `probs' not implemented for family `", family, "'", sep=""))
-gotsmooth <- replace(logical(length(object)), object$gotsmooth, TRUE)
-compacted <- object$compacted
-if (compacted) compactid <- object$compactid
-if (family == "pp") {
-    family <- "gev"
-    if (is.null(newdata)) {
-        message("Predictions for point process model given for quadrature points, not original data frame")
-        newdata <- object$data
-    }
-}
-nms <- names(object)[seq_along(object$call)]
-if (family == "exi") linkfn <- object$linkfn
-conf.pars <- list(object$coefficients, object[[V.type]], object$idpars)
-object <- subset(object, sapply(object, class) == "gamlist")
-hasformula <- sapply(object, function(x) length(x$coefficients) > 0)
-object <- subset(object, hasformula)
-hasformula <- hasformula[seq_along(object)]
-out <- list()
-if (!is.null(newdata)) {
-ndat <- nrow(newdata)
-if (ndat > 1e5) {
-newdata <- split(newdata, ceiling(seq_len(nrow(newdata))/1e5))
-} else {
-newdata <- list(newdata)
-}
-}# else ndat <- nrow(object$data)
-for (i in seq_along(object)) {
-if (is.null(newdata)) {
-out[[i]] <- object[[i]]$X
-if (compacted) out[[i]] <- out[[i]][compactid, , drop=FALSE]
-} else {
-if (gotsmooth[[i]]) {
-out[[i]] <- lapply(newdata, function(x) matrix(unlist(lapply(object[[i]]$smooth, mgcv::PredictMat, data=x)), nrow(x)))
-out[[i]] <- do.call(rbind, out[[i]])
-} else {
-out[[i]] <- lapply(newdata, function(x) matrix(0, nrow(x), 0))
-out[[i]] <- do.call(rbind, out[[i]])
-}
-pfmla <- as.formula(as.character(object[[i]]$pterms)[-2])
-out[[i]] <- cbind(do.call(rbind, lapply(newdata, function(x) model.matrix(pfmla, x))), out[[i]])
-}
-}
-if (type != "lpmatrix") {
-if (se.fit & type != "quantile") {
-std.err <- as.data.frame(lapply(seq_along(object), function(i) sqrt(rowSums(out[[i]] * (out[[i]] %*% object[[i]][[V.type]])))))
-}
-  outX <- out
-  out <- lapply(seq_along(out), function(i) out[[i]] %*% object[[i]]$coefficients)
-  out <- as.data.frame(lapply(out, function(x) x[,1]))
-}
-if (type %in% c("response", "quantile")) {
-unlink <- which(substr(nms, 1, 3) == "log")
-for (i in unlink) {
-  out[,i] <- exp(out[,i])
-  if (se.fit & type == "response") {
-    std.err[,i] <- out[,i] * std.err[,i]
-  }
-}
-if (family == "exi") out[,1] <- 2 * linkfn(out[,1]) - 1
-nms <- gsub("log", "", nms)
-}
-names(out) <- nms
-if (se.fit & type != "quantile") names(std.err) <- nms
-if (type == "quantile") {
-if (se.fit) out0 <- out
-qnms <- probs
-probs <- matrix(probs, nrow=ndat, ncol=length(probs), byrow=TRUE)
-pars <- matrix(NA, nrow=ndat, ncol=length(nms), byrow=TRUE)
-pars[,hasformula] <- sapply(out, c)
-if (family == "gpd") {
-out <- apply(probs, 2, function(x) .qgpd(x, 0, pars[,1], pars[,2]))
-} else {
-if (family == "gev") {
-out <- apply(probs, 2, function(x) .qgev(x, pars[,1], pars[,2], pars[,3]))
-} else {
-if (family == "weibull") {
-out <- apply(probs, 2, function(x) .qweibull(x, scale=pars[,1], shape=pars[,2]))
-} else {
-stop("invalid family")
-}}}
-if (se.fit) {
-ny <- nrow(outX[[1]])
-np <- length(outX)
-Sigma <- array(NA, dim=c(ny, np, np))
-idp <- conf.pars[[3]]
-for (i in seq_len(ny)) {
-  for (j in seq_len(np)) {
-    for (k in j:np) {
-      xj <- outX[[j]][i,]
-      xk <- outX[[k]][i,]
-      V <- conf.pars[[2]][idp == j, idp == k, drop=FALSE]
-      Sigma[i, j, k] <- sum(xj * (V %*% xk))
-      if (k != j) Sigma[i, k, j] <- Sigma[i, j, k]
-    }
-  }
-}
-std.err <- matrix(NA, ny, length(qnms))
-for (j in seq_along(qnms)) {
-  if (family == "gev") {
-  jac <- .dqgev(qnms[j], out0[,1], log(out0[,2]), out0[,3])
-  }
-  if (family == "ggpd") {
-  jac <- .dqgpd(qnms[j], log(out0[,2]), out0[,3])
-  }
-  if (family == "weibull") {
-  jac <- .dqweibull(qnms[j], log(out0[,2]), out0[,3])
-  }
-  for (i in seq_len(ny)) {
-    std.err[i, j] <- sum(jac[i,] * (Sigma[i,,] %*% jac[i,]))
-  }
-}
-std.err <- as.data.frame(sqrt(std.err))
-names(std.err) <- paste("q", round(qnms, 3), sep=":")
-}
-out <- as.data.frame(out)
-names(out) <- paste("q", round(qnms, 3), sep=":")
-}
-if (se.fit) out <- list(fitted = out, se.fit = std.err)
-return(out)
-} else {
-if (is.null(newdata))
-  newdata <- object$data
-pars <- predict(object, newdata, type="response")
-pit <- !all(apply(pars, 2, function(x) all(diff(x) < 1e-12)))
-x <- ppoints(nrow(newdata))
-y <- newdata[,object$response.name]
-if (is.null(y))
-  stop("No response in `newdata'")
-if (!pit) {
-if (!(family %in% c("gev", "gpd", "weibull")))
-  stop("Unsuitable `family' for `type == 'qqplot''")
-if (family == "gev")
-  x <- .qgev(x, pars[,1], pars[,2], pars[,3])
-if (family == "gpd")
-  x <- .qgpd(x, 0, pars[,1], pars[,2])
-if (family == "weibull") 
-  x <- .qweibull(x, pars[,1], pars[,2])
-} else {
-message("Margins converted to unit exponential by probability integral transformation.")
-x <- qexp(x)
-if (family == "gev")
-  y <- .pgev(y, pars[,1], pars[,2], pars[,3])
-if (family == "gpd")
-  y <- .pgpd(y, 0, pars[,1], pars[,2])
-if (family == "weibull") 
-  y <- .pweibull(y, pars[,1], pars[,2])
-y <- qexp(y)
-}
-qqplot(x, y)
-abline(0, 1)
-}
-}
-
-#' @rdname predict.evgam
+#' @return Fitted values extracted from the object `object'.
 #' 
 #' @export
 #' 
 fitted.evgam <- function(object, ...) {
-object <- subset(object, sapply(object, class) == "gamlist")
-out <- lapply(object, function(x) x$fitted)
-names(out) <- names(object)
-return(out)
+predict(object)
 }
 
 #' Simulations from a fitted \code{evgam} object
@@ -447,77 +246,91 @@ return(out)
 #'
 #' @examples
 #'
-#' \donttest{
-#'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
-#' simulate(m_gev)
-#' simulate(m_gev, probs=c(.95, .99))
-#'
-#' }
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
+#' # simulations of link GEV parameters for fremantle data
+#' simulate(m_gev, nsim=5)
+#' # simulations for Year 1989
+#' y1989 <- data.frame(Year = 1989)
+#' # link GEV parameter simulations
+#' simulate(m_gev, nsim=5, newdata = y1989)
+#' # GEV parameter simulations
+#' simulate(m_gev, nsim=5, newdata = y1989, type = "response")
+#' # 10-year return level simulations
+#' simulate(m_gev, nsim=5, newdata = y1989, type= "quantile", prob = .9)
+#' # 10- and 100-year return level simulations
+#' simulate(m_gev, nsim=5, newdata = y1989, type= "quantile", prob = c(.9, .99))
 #'
 #' @export
 #' 
-simulate.evgam <- function(object, nsim=1e3, seed=NULL, newdata=NULL, 
-type="link", probs=NULL, threshold=0, marginal=TRUE, ...) {
-if (!is.null(probs)) type <- "quantile"
-if (is.null(newdata)) newdata <- object$data
+simulate.evgam <- function(object, nsim=1e3, seed=NULL, newdata, 
+  type="link", probs=NULL, threshold=0, marginal=TRUE, ...) {
+if (!is.null(probs)) 
+  type <- "quantile"
+# if (is.null(newdata)) newdata <- object$data
 if (type %in% c("link", "response")) {
-if(!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
-        runif(1)                     # initialize the RNG if necessary
-if(is.null(seed)) {
-  RNGstate <- get(".Random.seed", envir = .GlobalEnv)
-} else {
-  R.seed <- get(".Random.seed", envir = .GlobalEnv)
-  set.seed(seed)
-  RNGstate <- structure(seed, kind = as.list(RNGkind()))
-  on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
-}
-family <- object$family
-if (marginal) {
-  V.type <- "Vc" 
-} else {
-  V.type <- "Vp"
-}
-B <- .pivchol_rmvn(nsim, object$coefficients, object[[V.type]])
-idpars <- object$idpars
-X <- predict.evgam(object, newdata, type="lpmatrix")
-nms <- names(X)
-B <- lapply(seq_along(X), function(i) B[idpars == i, , drop=FALSE])
-X <- lapply(seq_along(X), function(i) X[[i]] %*% B[[i]])
-names(X) <- nms
-if (type %in% c("response", "quantile")) {
-unlink <- which(substr(names(X), 1, 3) == "log")
+  if(!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+    runif(1) # initialize the RNG if necessary
+  if(is.null(seed)) {
+    RNGstate <- get(".Random.seed", envir = .GlobalEnv)
+  } else {
+    R.seed <- get(".Random.seed", envir = .GlobalEnv)
+    set.seed(seed)
+    RNGstate <- structure(seed, kind = as.list(RNGkind()))
+    on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
+  }
+  family <- object$family
+  if (marginal) {
+    V.type <- "Vc" 
+  } else {
+    V.type <- "Vp"
+  }
+  B <- .pivchol_rmvn(nsim, object$coefficients, object[[V.type]])
+  idpars <- object$idpars
+  X <- predict.evgam(object, newdata, type="lpmatrix")
+  nms <- names(X)
+  B <- lapply(seq_along(X), function(i) B[idpars == i, , drop=FALSE])
+  X <- lapply(seq_along(X), function(i) X[[i]] %*% B[[i]])
+  names(X) <- nms
+  if (type == "response") {
+    if (family != "exi") {
+      unlink <- which(substr(nms, 1, 3) == "log")
+      for (i in unlink) {
+        X[[i]] <- exp(X[[i]])
+        if (substr(nms[i], 1, 5) == "logit")
+          X[[i]] <- X[[i]] / (1 + X[[i]])
+      } 
+    } else {
+      X[[i]] <- object$linkfn(X[[i]])
+    }
+  }
+nms <- gsub("cloglog", "", nms)
+nms <- gsub("probit", "", nms)
+nms <- gsub("logit", "", nms)
 nms <- gsub("log", "", nms)
-for (i in unlink) X[[i]] <- exp(X[[i]])
 names(X) <- nms
-}
 }
 if (type == "quantile") {
-X <- simulate.evgam(object, nsim=nsim, seed=seed, newdata=newdata, type="response")
-out <- list()
-for (i in seq_along(probs)) {
-if (object$family == "gpd") {
-out[[i]] <- threshold + .qgpd(probs[i], 0, X[[1]], X[[2]])
-} else {
-out[[i]] <- .qgev(probs[i], X[[1]], X[[2]], X[[3]])
-}
-}
-names(out) <- paste("q", probs, sep=":")
-if (length(probs) == 1) {
-X <- out[[1]]
-} else {
-if (nrow(newdata) == 1) {
-X <- t(sapply(out, c))
-} else {
-X <- out
-}
-}
+  X <- simulate.evgam(object, nsim, seed, newdata, "response")
+  out <- list()
+  for (i in seq_along(probs)) {
+    if (object$family == "gpd") {
+      out[[i]] <- threshold + .qgpd(probs[i], 0, X[[1]], X[[2]])
+    } else {
+      out[[i]] <- .qgev(probs[i], X[[1]], X[[2]], X[[3]])
+    }
+  }
+  names(out) <- paste("q", probs, sep=":")
+  if (length(probs) == 1) {
+    X <- out[[1]]
+  } else {
+    if (nrow(X[[1]]) == 1) {
+      X <- t(sapply(out, c))
+    } else {
+      X <- out
+    }
+  }
 }
 return(X)
 }
@@ -526,50 +339,27 @@ return(X)
 #'
 #' @param object a fitted \code{evgam} object
 #' @param ... not used
-#' @param k numeric, the penalty per parameter to be used; the default \code{k = 2} is the classical AIC
 #'
 #' @return A scalar
 #'
 #' @examples
-#'
-#' \donttest{
-#'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
+#' 
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 #' logLik(m_gev)
 #' AIC(m_gev)
 #' BIC(m_gev)
-#'
-#' }
-#'
-#' @name logLik
 #'
 #' @export
 #' 
 logLik.evgam <- function(object, ...) {
 if (!missing(...)) warning("extra arguments discarded")
-object$logLik
-}
-
-#' @rdname logLik
-#' @export
-#' 
-AIC.evgam <- function(object, ..., k = 2) {
-if (!missing(...)) warning("extra arguments discarded")
--2 * object$logLik + k * attr(object, "df")
-}
-
-#' @rdname logLik
-#' @export
-#' 
-BIC.evgam <- function(object, ...) {
-if (!missing(...)) warning("extra arguments discarded")
--2 * object$logLik + log(nobs(object)) * attr(object, "df")
+out <- object$logLik
+attr(out, "df") <- attr(object, "df")
+attr(out, "nobs") <- nobs(object)
+class(out) <- "logLik"
+out
 }
 
 #' Plot a fitted \code{evgam} object
@@ -585,18 +375,10 @@ if (!missing(...)) warning("extra arguments discarded")
 #'
 #' @examples
 #'
-#' \donttest{
-#'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 #' plot(m_gev)
-#'
-#' }
 #'
 #' @export
 #' 
@@ -655,18 +437,10 @@ given.vals <- given.vals
 #'
 #' @examples
 #'
-#' \donttest{
-#'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 #' summary(m_gev)
-#'
-#' }
 #'
 #' @name summary.evgam
 #'
@@ -720,18 +494,11 @@ invisible(x)
 #' @return The call of the \code{evgam} object
 #'
 #' @examples
-#' \donttest{
 #'
-#' library(evgam)
-#' data(COprcp)
-#' COprcp$year <- format(COprcp$date, "%Y")
-#' COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-#' COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-#' fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-#' m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
+#' data(fremantle)
+#' fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+#' m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 #' print(m_gev)
-#'
-#' }
 #'
 #' @export
 #' 
@@ -741,7 +508,6 @@ print(x$call)
 invisible(x)
 }
 
-
 #' Bind a list a data frames
 #'
 #' @param x a list of data frames
@@ -749,6 +515,7 @@ invisible(x)
 #' @return A data frame
 #'
 #' @examples
+#'
 #' z <- list(data.frame(x=1, y=1), data.frame(x=2, y=2))
 #' dfbind(z)
 #'
@@ -775,11 +542,21 @@ x
 #' @param y a vector of y coordinates
 #' @param z a variable for defining colours
 #' @param n an integer giving the number of colour levels, supplied to \link[base]{pretty}
-#' @param rev logical: should the palette be reversed? Defaults to \code{TRUE}
-#' @param cex a scalar for character expansion, supplied to \link[graphics]{plot}
-#' @param pch an integer giving the plotting character, supplied to \link[graphics]{plot}
-#' @param add logical: add to an existing plot? Defaults to \code{FALSE}
 #' @param breaks a vector or breaks for defining color intervals; defaults to \code{NULL}, so \link[base]{pretty} and \code{n} are used on \code{z}
+#' @param palette a function for the color palette, or colors between \code{breaks}; defaults to \link[grDevices]{heat.colors}
+#' @param rev logical: should the palette be reversed? Defaults to \code{TRUE}
+#' @param pch an integer giving the plotting character, supplied to \link[graphics]{plot}
+#' @param add should this be added to an existing plot? Defaults to \code{FALSE}
+#' @param z.lim xxx
+#' @param ... other arguments passed to \link[graphics]{plot}
+#' @param legend should a legend be added? Defaults to code{FALSE}
+#' @param n.legend an integer giving the approximate number of legend entries; defaults to 6
+#' @param legend.pretty logical: should the legend values produced by \[base]{pretty}? Othewrwise they are exact. Defaults to \code{TRUE}
+#' @param legend.x passed to \link[graphics]{legend}'s \code{x} argument
+#' @param legend.y passed to \link[graphics]{legend}'s \code{y} argument
+#' @param legend.horiz passed to \link[graphics]{legend}'s \code{horiz} argument
+#' @param legend.bg passed to \link[graphics]{legend}'s \code{bg} argument
+#' @param legend.plot passed to \link[graphics]{legend}'s \code{plot} argument
 #'
 #' @return A plot
 #'
@@ -788,27 +565,63 @@ x
 #' x <- runif(50)
 #' y <- runif(50)
 #' colplot(x, y, x * y)
+#' colplot(x, y, x * y, legend=TRUE, legend.x="bottomleft")
+#' colplot(x, y, x * y, legend=TRUE, legend.pretty=FALSE, n.legend=10, 
+#'   legend.x="bottomleft", legend.horiz=TRUE)
 #'
 #' @export
 #' 
-colplot <- function(x, y, z, n=20, rev=TRUE, cex=1, pch=21, add=FALSE, breaks=NULL) {
-brks <- pretty(z, n)
-pal <- heat.colors(length(brks[-1]))
-if (rev) pal <- rev(pal)
+colplot <- function(x, y, z, n = 20, z.lim = NULL, breaks = NULL, palette = heat.colors, rev = TRUE, 
+  pch = 21, add = FALSE, ..., legend = FALSE, n.legend = 6, legend.pretty = TRUE, 
+  legend.plot = TRUE, legend.x, legend.y = NULL, legend.horiz = FALSE, legend.bg = par("bg")) {
+if (!is.null(breaks)) {
+  brks <- breaks
+} else {
+  if (!is.null(z.lim)) {
+    brks <- pretty(z.lim, n)
+  } else {
+    brks <- pretty(z, n)
+  }
+}
+n <- length(brks[-1])
+if (inherits(palette, "function")) {
+  pal <- palette(n)
+  if (rev) 
+    pal <- rev(pal)
+} else {
+  pal <- palette
+  if (length(pal) != length(breaks) - 1)
+    stop("length(palette) != length(breaks) - 1.")
+}  
 col <- pal[as.integer(cut(z, brks))]
-if (!add) {
+if (!add) 
+  plot(x, y, type="n", ...)
 if (pch %in% 21:25) {
-  plot(x, y, bg=col, pch=pch, cex=cex)
+  points(x, y, bg=col, pch=pch, ...)
 } else {
-  plot(x, y, col=col, pch=pch, cex=cex)
+  points(x, y, col=col, pch=pch, ...)
 }
-} else {
-if (pch %in% 21:25) {
-  points(x, y, bg=col, pch=pch, cex=cex)
-} else {
-  points(x, y, col=col, pch=pch, cex=cex)
+if (legend) {
+  if (!legend.pretty) {
+    brks2 <- seq(brks[1], brks[length(brks)], l=n.legend)
+  } else {
+    brks2 <- pretty(brks, n.legend)
+  }
+  n.legend <- length(brks2[-1])
+  pal2 <- palette(n.legend)
+  if (rev) pal2 <- rev(pal2)
+  brks2 <- format(brks2, width=3, flag="0")
+  lg <- paste(brks2[1:(n.legend - 1)], brks2[2:n.legend], sep=" - ")
+  if (pch %in% 21:25) {
+    lg <- legend(x=legend.x, y=legend.y, legend=lg, pch=pch, pt.bg=pal2,
+      horiz=legend.horiz, bg=legend.bg, plot=legend.plot)
+  } else {
+    lg <- legend(x=legend.x, y=legend.y, legend=lg, pch=pch, col=pal2,
+      horiz=legend.horiz, bg=legend.bg, plot=legend.plot)
+  }
 }
-}
+if (!legend.plot) 
+  lg
 }
 
 #' Moore-Penrose pseudo-inverse of a matrix

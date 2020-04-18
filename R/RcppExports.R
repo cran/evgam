@@ -88,6 +88,18 @@ gevd34 <- function(pars, X1, X2, X3, yvec, dupid, dcate) {
     .Call(`_evgam_gevd34`, pars, X1, X2, X3, yvec, dupid, dcate)
 }
 
+gevcd0 <- function(pars, X1, X2, X3, ymat, dupid, dcate) {
+    .Call(`_evgam_gevcd0`, pars, X1, X2, X3, ymat, dupid, dcate)
+}
+
+gevcd12 <- function(pars, X1, X2, X3, ymat, dupid, dcate) {
+    .Call(`_evgam_gevcd12`, pars, X1, X2, X3, ymat, dupid, dcate)
+}
+
+gevcd34 <- function(pars, X1, X2, X3, ymat, dupid, dcate) {
+    .Call(`_evgam_gevcd34`, pars, X1, X2, X3, ymat, dupid, dcate)
+}
+
 gpdd0 <- function(pars, X1, X2, yvec, dupid, dcate) {
     .Call(`_evgam_gpdd0`, pars, X1, X2, yvec, dupid, dcate)
 }
@@ -100,6 +112,18 @@ gpdd34 <- function(pars, X1, X2, yvec, dupid, dcate) {
     .Call(`_evgam_gpdd34`, pars, X1, X2, yvec, dupid, dcate)
 }
 
+gpdcd0 <- function(pars, X1, X2, ymat, dupid, dcate) {
+    .Call(`_evgam_gpdcd0`, pars, X1, X2, ymat, dupid, dcate)
+}
+
+gpdcd12 <- function(pars, X1, X2, ymat, dupid, dcate) {
+    .Call(`_evgam_gpdcd12`, pars, X1, X2, ymat, dupid, dcate)
+}
+
+gpdcd34 <- function(pars, X1, X2, ymat, dupid, dcate) {
+    .Call(`_evgam_gpdcd34`, pars, X1, X2, ymat, dupid, dcate)
+}
+
 .gH1 <- function(gh, X1, dupid, dcate, sand, deriv) {
     .Call(`_evgam_gH1`, gh, X1, dupid, dcate, sand, deriv)
 }
@@ -110,6 +134,10 @@ gpdd34 <- function(pars, X1, X2, yvec, dupid, dcate) {
 
 .gH3 <- function(gh, X1, X2, X3, dupid, dcate, sand, deriv) {
     .Call(`_evgam_gH3`, gh, X1, X2, X3, dupid, dcate, sand, deriv)
+}
+
+.gH4 <- function(gh, X1, X2, X3, X4, dupid, dcate, sand, deriv) {
+    .Call(`_evgam_gH4`, gh, X1, X2, X3, X4, dupid, dcate, sand, deriv)
 }
 
 pp1d0 <- function(pars, X1, X2, X3, yvec, wvec) {
@@ -146,6 +174,30 @@ ppcd12 <- function(pars, X1, X2, X3, yvec) {
 
 ppcd34 <- function(pars, X1, X2, X3, yvec) {
     .Call(`_evgam_ppcd34`, pars, X1, X2, X3, yvec)
+}
+
+ppexi1d0 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi1d0`, pars, X1, X2, X3, X4, yvec, wvec)
+}
+
+ppexi1d12 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi1d12`, pars, X1, X2, X3, X4, yvec, wvec)
+}
+
+ppexi1d34 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi1d34`, pars, X1, X2, X3, X4, yvec, wvec)
+}
+
+ppexi2d0 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi2d0`, pars, X1, X2, X3, X4, yvec, wvec)
+}
+
+ppexi2d12 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi2d12`, pars, X1, X2, X3, X4, yvec, wvec)
+}
+
+ppexi2d34 <- function(pars, X1, X2, X3, X4, yvec, wvec) {
+    .Call(`_evgam_ppexi2d34`, pars, X1, X2, X3, X4, yvec, wvec)
 }
 
 weibd0 <- function(pars, X1, X2, yvec, dupid, dcate) {

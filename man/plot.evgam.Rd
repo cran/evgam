@@ -34,17 +34,9 @@ Plot a fitted \code{evgam} object
 }
 \examples{
 
-\donttest{
-
-library(evgam)
-data(COprcp)
-COprcp$year <- format(COprcp$date, "\%Y")
-COprcp_gev <- aggregate(prcp ~ year + meta_row, COprcp, max)
-COprcp_gev <- cbind(COprcp_gev, COprcp_meta[COprcp_gev$meta_row,])
-fmla_gev <- list(prcp ~ s(lon, lat, k=30) + s(elev, bs="cr"), ~ s(lon, lat, k=20), ~ 1)
-m_gev <- evgam(fmla_gev, data=COprcp_gev, family="gev")
+data(fremantle)
+fmla_gev <- list(SeaLevel ~ s(Year, k=5, bs="cr"), ~ 1, ~ 1)
+m_gev <- evgam(fmla_gev, fremantle, family = "gev")
 plot(m_gev)
-
-}
 
 }
