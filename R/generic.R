@@ -135,6 +135,9 @@ ald.args=list(), exi.args=list(), pp.args=list(), sandwich.args=list()) {
 ## setup family
 family.info <- .setup.family(family, pp.args)
 
+if (is.null(family.info$lik.fns$d340))
+  outer <- "fd"
+
 ## setup formulae
 formula <- .setup.formulae(formula, family.info$npar, family.info$npar2, data, trace)
 response.name <- attr(formula, "response.name")
@@ -365,11 +368,11 @@ out
 #' Plot a fitted \code{evgam} object
 #'
 #' @param x a fitted \code{evgam} object
-#' @param given.vals a list specifying variables values that are fixed.
-#' @param add.map logical: should a map outline be added to any two-dimensional smooths using \link[maps]{map}? Defaults to \code{FALSE}
-#' @param use.image logical: should \link[graphics]{image} be used to represent two-dimensional smooths, as opposed to \link[graphics]{contour}? Defaults to \code{FALSE}
-#' @param map.env a character string identifying the map to superimpose via \link[maps]{map}; defaults to \code{"world"}
-#' @param ... unused
+#' @param onepage logical: should all plots be on one page, or on separate pages? Defaults to \code{TRUE}
+#' @param which a vector of integers identifying which smooths to plot. The default \code{NULL} plots all smooths
+#' @param main a character string or vector of plot titles for each plot. If not supplied default titles are used
+#' @param ask logical: ask to show next plots if too many figures for current device?
+#' @param ... extra arguments to pass to \link[mgcv]{plot.gam}
 #'
 #' @return Plots representing all one- or two-dimensional smooths
 #'
@@ -382,38 +385,47 @@ out
 #'
 #' @export
 #' 
-plot.evgam <- function(x, given.vals=NULL, use.image=FALSE, add.map=FALSE, map.env="world", ...) {
-plotdata <- x$plotdata
-nms <- names(x)[x$gotsmooth]
-x <- lapply(x$gotsmooth, function(i) x[[i]])
-names(x) <- nms
-nplot <- sapply(x, function(y) length(y$smooth))
-willplot <- nplot > 0
-x <- subset(x, willplot)
-nplot <- nplot[willplot]
-prefixes <- names(nplot)
-if (prod(par("mfcol")) < sum(nplot)) par(mfrow=rev(n2mfrow(sum(nplot))))
-for (i in seq_along(x)) for (j in seq_along(x[[i]]$smooth)) {
-smthij <- x[[i]]$smooth[[j]]
-dij <- subset(plotdata, sapply(lapply(plotdata, names), function(x) all(smthij$vn %in% x)))[[1]]
-if (ncol(dij) > 2) {
-if (is.null(given.vals)) {
-given.vals <- lapply(3:ncol(dij), function(j) quantile(dij[,j], .5))
-names(given.vals) <- names(dij)[3:ncol(dij)]
+plot.evgam <- function(x, onepage = TRUE, which = NULL, main, ask = !onepage, ...) {
+x <- x[x$gotsmooth]
+if (is.null(which)) {
+  nplot <- sum(unlist(lapply(x, function(x) as.integer(sapply(x$smooth, function(y) y$plot.me)))))
+  which <- seq_len(nplot)
 } else {
-if (inherits(given.vals, "character")) {
-given.vals <- as.vector(na.omit(match(names(dij), given.vals)))
+  nplot <- length(which)
 }
-if (inherits(given.vals, "integer")) {
-id.given <- given.vals
-given.vals <- lapply(id.given, function(i) quantile(dij[,j], .5))
-names(given.vals) <- names(dij)[id.given]
-} else {
-given.vals <- given.vals
-}}
+if (onepage) {
+  omfrow <- par("mfrow")
+#   nmfrow <- n2mfrow(nplot, asp = 3) # use when R 4.0.0 is old version
+  nmfrow <- rev(n2mfrow(nplot))
+  par(mfrow = nmfrow)
 }
-.plotSmooth(x[[i]], j, dij, prefixes[i], given.vals, add.map=add.map, use.image=use.image, map.env=map.env)
+
+if (ask) {
+  oask <- par("ask")
+  if (nplot > prod(par("mfrow")) && dev.interactive()) {
+    par(ask = TRUE)
+  } else {
+    ask <- FALSE
+  }
 }
+
+current <- 1
+for (i in seq_along(x)) {
+  for (j in seq_along(x[[i]]$smooth)) {
+    if (current %in% which) {
+      if (missing(main)) {
+        mgcv::plot.gam(x[[i]], select = j, main = paste(names(x)[i], x[[i]]$smooth[[j]]$label, sep = ": "), ...)
+      } else {
+        mgcv::plot.gam(x[[i]], select = j, ...)
+      }
+    }
+    current <- current + 1
+  }
+}
+if (onepage)
+  par(mfrow = omfrow)
+if (ask)
+  par(ask = oask)
 }
 
 #' Summary method for a fitted \code{evgam} object
