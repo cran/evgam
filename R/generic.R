@@ -75,6 +75,9 @@
 #' selection for general smooth models. Journal of the American Statistical 
 #' Association, 111(516), 1548-1563.
 #'
+#' Youngman, B. D. (2022). evgam: An R Package for Generalized Additive Extreme
+#' Value Modules. Journal of Statistical Software. To appear. \doi{10.18637/jss.v103.i03}
+#'
 #' Yu, K., & Moyeed, R. A. (2001). Bayesian quantile regression. 
 #' Statistics & Probability Letters, 54(4), 437-447.
 #' 

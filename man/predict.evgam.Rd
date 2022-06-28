@@ -67,3 +67,7 @@ predict(m_gev, y1989, type= "quantile", prob = .9)
 predict(m_gev, y1989, type= "quantile", prob = c(.9, .99))
 
 }
+\references{
+Youngman, B. D. (2022). evgam: An R Package for Generalized Additive Extreme
+Value Modules. Journal of Statistical Software. To appear. \doi{10.18637/jss.v103.i03}
+}

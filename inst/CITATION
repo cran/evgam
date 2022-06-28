@@ -1,0 +1,14 @@
+bibentry(bibtype = "Article",
+  title        = "{evgam}: An {R} Package for Generalized Additive Extreme Value Models",
+  author       = person(given = c("Benjamin", "D."),
+                        family = "Youngman",
+                        email = "b.youngman@exeter.ac.uk"),
+  journal      = "Journal of Statistical Software",
+  year         = "2022",
+  volume       = "103",
+  number       = "3",
+  pages        = "1--26",
+  doi          = "10.18637/jss.v103.i03",
+  header       = "To cite evgam in publications use:"
+)
+
